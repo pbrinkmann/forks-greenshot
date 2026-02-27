@@ -69,6 +69,14 @@ namespace Greenshot.Editor.Drawing
         // ReSharper disable once InconsistentNaming
         private string text;
 
+        [NonSerialized] private bool _userHasResizedWidth;
+
+        public bool UserHasResizedWidth
+        {
+            get => _userHasResizedWidth;
+            set => _userHasResizedWidth = value;
+        }
+
         // there is a binding on the following property!
         public string Text
         {
@@ -87,6 +95,7 @@ namespace Greenshot.Editor.Drawing
             }
 
             text = newText;
+            FitToText();
             OnPropertyChanged("Text");
         }
 
@@ -183,6 +192,10 @@ namespace Greenshot.Editor.Drawing
 
         public override void ApplyBounds(NativeRectFloat newBounds)
         {
+            if (Status != EditStatus.DRAWING && (int) Math.Round(newBounds.Width) != Width)
+            {
+                _userHasResizedWidth = true;
+            }
             base.ApplyBounds(newBounds);
             UpdateTextBoxPosition();
         }
@@ -196,12 +209,60 @@ namespace Greenshot.Editor.Drawing
             }
         }
 
-        public void FitToText()
+        public virtual void FitToText()
         {
-            Size textSize = TextRenderer.MeasureText(text, _font);
+            if (_font == null)
+            {
+                return;
+            }
+
             int lineThickness = GetFieldValueAsInt(FieldType.LINE_THICKNESS);
-            Width = textSize.Width + lineThickness;
-            Height = textSize.Height + lineThickness;
+            int paddingX = lineThickness + 10;
+            int paddingY = lineThickness;
+
+            // Measure a placeholder to get a reasonable minimum size tied to the font
+            Size minSize = TextRenderer.MeasureText("AaBbCcDdEe", _font);
+            int minWidth = minSize.Width + paddingX;
+            int minHeight = minSize.Height + paddingY;
+
+            string textToMeasure = string.IsNullOrEmpty(text) ? " " : text;
+
+            // 1. Calculate target width
+            int targetWidth = Width;
+            if (targetWidth < minWidth)
+            {
+                targetWidth = minWidth;
+            }
+
+            // If the user hasn't manually resized the width, we grow it to fit the natural (unwrapped) width
+            if (!_userHasResizedWidth)
+            {
+                Size naturalSize = TextRenderer.MeasureText(textToMeasure, _font);
+                int naturalWidth = naturalSize.Width + paddingX;
+                if (naturalWidth > targetWidth)
+                {
+                    targetWidth = naturalWidth;
+                }
+            }
+
+            // 2. Measure height based on targetWidth
+            // We use the current or target width as a constraint for the height measurement
+            Size wrappedSize = TextRenderer.MeasureText(textToMeasure, _font,
+                new Size(Math.Max(targetWidth - paddingX, 1), int.MaxValue),
+                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
+
+            int preferredWidth = targetWidth;
+            int preferredHeight = Math.Max(wrappedSize.Height + paddingY, minHeight);
+
+            // Apply grow-only logic
+            if (preferredWidth > Width)
+            {
+                Width = preferredWidth;
+            }
+            if (preferredHeight > Height)
+            {
+                Height = preferredHeight;
+            }
         }
 
         private void TextContainer_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -302,6 +363,7 @@ namespace Greenshot.Editor.Drawing
 
         private void ShowTextBox()
         {
+            FitToText();
             if (InternalParent != null)
             {
                 InternalParent.KeysLocked = true;
@@ -470,6 +532,7 @@ namespace Greenshot.Editor.Drawing
             UpdateTextBoxFont();
 
             UpdateAlignment();
+            FitToText();
         }
 
         private void UpdateAlignment()
