@@ -24,6 +24,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Runtime.Serialization;
+using System.Windows.Forms;
 using Dapplo.Windows.Common.Extensions;
 using Dapplo.Windows.Common.Structs;
 using Greenshot.Base.Interfaces;
@@ -65,6 +66,67 @@ namespace Greenshot.Editor.Drawing
         {
             base.OnDeserialized(streamingContext);
             InitTargetAdorner(_storedTargetGripperLocation);
+        }
+
+        /// <summary>
+        /// Grow the speech bubble to fit its text, but add extra padding to keep the text within the bubble's rounded corners.
+        /// </summary>
+        public override void FitToText()
+        {
+            if (Font == null)
+            {
+                return;
+            }
+
+            // Speech bubbles need more padding due to rounded corners, so we base it on the font height
+            int paddingX = (int) (Font.Height * 2.5); // 20pt font -> height ~27 -> padding ~67
+            int paddingY = Font.Height;
+
+            // Measure a placeholder to get a reasonable minimum size tied to the font
+            Size minSize = TextRenderer.MeasureText("AaBbCcDdEe", Font);
+            int minWidth = minSize.Width + paddingX;
+            int minHeight = minSize.Height + paddingY;
+
+            int lineThickness = GetFieldValueAsInt(FieldType.LINE_THICKNESS);
+
+            // Measure the current text
+            string textToMeasure = string.IsNullOrEmpty(Text) ? " " : Text;
+
+            // 1. Calculate target width
+            int targetWidth = Width;
+            if (targetWidth < minWidth)
+            {
+                targetWidth = minWidth;
+            }
+
+            // If the user hasn't manually resized the width, we grow it to fit the natural (unwrapped) width
+            if (!UserHasResizedWidth)
+            {
+                Size naturalSize = TextRenderer.MeasureText(textToMeasure, Font);
+                int naturalWidth = naturalSize.Width + paddingX;
+                if (naturalWidth > targetWidth)
+                {
+                    targetWidth = naturalWidth;
+                }
+            }
+
+            // 2. Measure height based on targetWidth
+            // We use the current or target width as a constraint for the height measurement
+            Size wrappedSize = TextRenderer.MeasureText(textToMeasure, Font,
+                new Size(Math.Max(targetWidth - paddingX, 1), int.MaxValue),
+                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
+
+            int preferredWidth = targetWidth;
+            int preferredHeight = Math.Max(wrappedSize.Height + paddingY, minHeight);
+
+            if (preferredWidth > Width)
+            {
+                Width = preferredWidth;
+            }
+            if (preferredHeight > Height)
+            {
+                Height = preferredHeight;
+            }
         }
 
         public SpeechbubbleContainer(ISurface parent) : base(parent)

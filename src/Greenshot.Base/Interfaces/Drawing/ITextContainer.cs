@@ -25,5 +25,6 @@ namespace Greenshot.Base.Interfaces.Drawing
     {
         string Text { get; set; }
         void FitToText();
+        bool UserHasResizedWidth { get; set; }
     }
 }
