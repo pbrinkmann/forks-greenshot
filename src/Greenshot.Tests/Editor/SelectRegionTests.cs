@@ -344,6 +344,21 @@ namespace Greenshot.Tests.Editor
         }
 
         [Fact]
+        public void FillRegion_NotifiesTheEditor_SoTheUndoButtonIsUpdated()
+        {
+            using var surface = CreateSurface();
+            int notifications = 0;
+            surface.MovingElementChanged += (sender, args) => notifications++;
+
+            surface.FillRegion(new NativeRect(10, 10, 20, 20), Color.Red);
+            Assert.Equal(1, notifications);
+
+            // Nothing was filled, so there is nothing to refresh
+            surface.FillRegion(new NativeRect(ImageWidth + 10, ImageHeight + 10, 20, 20), Color.Red);
+            Assert.Equal(1, notifications);
+        }
+
+        [Fact]
         public void FillRegion_OutsideTheImage_DoesNothing()
         {
             using var surface = CreateSurface();

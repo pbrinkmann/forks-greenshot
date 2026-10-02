@@ -2501,6 +2501,9 @@ namespace Greenshot.Editor.Drawing
             // Do not dispose the old image, otherwise we can't undo
             SetImage(filledImage, false);
             Invalidate();
+
+            // maybe the undo button has to be enabled
+            _movingElementChanged?.Invoke(this, new SurfaceElementEventArgs());
             return true;
         }
 
