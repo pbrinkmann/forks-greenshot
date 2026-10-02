@@ -442,7 +442,7 @@ if (!IsDisposed && !Disposing && IsHandleCreated)
 
             _toolbarButtons = new[]
             {
-                btnCursor, btnRect, btnEllipse, btnText, btnLine, btnArrow, btnFreehand, btnHighlight, btnObfuscate, btnCrop, btnStepLabel, btnSpeechBubble, btnEmoji
+                btnCursor, btnSelectRegion, btnRect, btnEllipse, btnText, btnLine, btnArrow, btnFreehand, btnHighlight, btnObfuscate, btnCrop, btnStepLabel, btnSpeechBubble, btnEmoji
             };
             //toolbarDropDownButtons = new ToolStripDropDownButton[]{btnBlur, btnPixeliate, btnTextHighlighter, btnAreaHighlighter, btnMagnifier};
 
@@ -828,6 +828,9 @@ if (!IsDisposed && !Disposing && IsHandleCreated)
                 case DrawingModes.Emoji:
                     SetButtonChecked(btnEmoji);
                     break;
+                case DrawingModes.Select:
+                    SetButtonChecked(btnSelectRegion);
+                    break;
             }
 
             RefreshEditorControls();
@@ -902,6 +905,12 @@ if (!IsDisposed && !Disposing && IsHandleCreated)
         private void BtnCursorClick(object sender, EventArgs e)
         {
             _surface.DrawingMode = DrawingModes.None;
+            RefreshFieldControls();
+        }
+
+        private void BtnSelectRegionClick(object sender, EventArgs e)
+        {
+            _surface.DrawingMode = DrawingModes.Select;
             RefreshFieldControls();
         }
 
@@ -1219,6 +1228,9 @@ if (!IsDisposed && !Disposing && IsHandleCreated)
                 {
                     case Keys.Escape:
                         BtnCursorClick(sender, e);
+                        break;
+                    case Keys.B:
+                        BtnSelectRegionClick(sender, e);
                         break;
                     case Keys.R:
                         BtnRectClick(sender, e);
@@ -2536,6 +2548,7 @@ if (!IsDisposed && !Disposing && IsHandleCreated)
             this.propertiesToolStrip.MinimumSize = new System.Drawing.Size(150, coreConfiguration.IconSize.Height + 10);
 
             this.btnCursor.Text = Language.GetString("editor_cursortool");
+            this.btnSelectRegion.Text = Language.GetString("editor_selectregion");
             this.btnRect.Text = Language.GetString("editor_drawrectangle");
             this.btnEllipse.Text = Language.GetString("editor_drawellipse");
             this.btnLine.Text = Language.GetString("editor_drawline");

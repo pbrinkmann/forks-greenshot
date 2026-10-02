@@ -255,6 +255,14 @@
         rkJggg==
 </value>
   </data>
+  <data name="btnSelectRegion.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
+        YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAACFSURBVDhPrY7LCcAgEEQtwk7s/55zCkgbOSYMzMCuWTUb
+        8kDU/Tym/EJr7QJvbq540NyOc18dzHHFA3M/XGt91FIJIOgl6QTAStIJhCR4c8UzSyDw/5xAoMYVz5sE
+        IpSgAYm9RwIwTGKJBKjZw9EYCTSsN9trtMivE7I0px9MCyKw7AWl3PuEkUSrSaS+AAAAAElFTkSuQmCC
+</value>
+  </data>
   <data name="btnCrop.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAO
