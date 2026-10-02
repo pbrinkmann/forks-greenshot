@@ -180,6 +180,7 @@ Also, we would highly appreciate if you checked whether a tracker item already e
 		<resource name="editor_save_objects">Save objects to file</resource>
 		<resource name="editor_saveas">Save as...</resource>
 		<resource name="editor_selectall">Select all</resource>
+		<resource name="editor_selectregion">Select region (B)</resource>
 		<resource name="editor_senttoprinter">Print job was sent to '{0}'.</resource>
 		<resource name="editor_shadow">Drop shadow (/)</resource>
 		<resource name="editor_storedtoclipboard">Image stored to clipboard.</resource>

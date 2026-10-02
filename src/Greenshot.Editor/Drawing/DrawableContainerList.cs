@@ -194,7 +194,11 @@ namespace Greenshot.Editor.Drawing
             {
                 dc.Left += dx;
                 dc.Top += dy;
-                modified = true;
+                // The region of the select region tool is not part of the image, moving it doesn't modify anything
+                if (dc is not SelectRegionContainer)
+                {
+                    modified = true;
+                }
             }
 
             // Invalidate after

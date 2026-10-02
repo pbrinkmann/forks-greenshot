@@ -60,6 +60,7 @@ namespace Greenshot.Editor.Forms
 			this.panel1 = new NonJumpingPanel();
 			this.toolsToolStrip = new ToolStripEx();
 			this.btnCursor = new ToolStripButton();
+			this.btnSelectRegion = new ToolStripButton();
 			this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
 			this.btnRect = new ToolStripButton();
 			this.btnEllipse = new ToolStripButton();
@@ -332,6 +333,7 @@ namespace Greenshot.Editor.Forms
 			this.toolsToolStrip.Renderer = new CustomToolStripProfessionalRenderer();
 			this.toolsToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
 									this.btnCursor,
+									this.btnSelectRegion,
 									this.toolStripSeparator1,
 									this.btnRect,
 									this.btnEllipse,
@@ -367,6 +369,14 @@ namespace Greenshot.Editor.Forms
 			this.btnCursor.ImageTransparentColor = System.Drawing.Color.Magenta;
 			this.btnCursor.Name = "btnCursor";
 			this.btnCursor.Click += new System.EventHandler(this.BtnCursorClick);
+			//
+			// btnSelectRegion
+			//
+			this.btnSelectRegion.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+			this.btnSelectRegion.Image = ((System.Drawing.Image)(resources.GetObject("btnSelectRegion.Image")));
+			this.btnSelectRegion.ImageTransparentColor = System.Drawing.Color.Magenta;
+			this.btnSelectRegion.Name = "btnSelectRegion";
+			this.btnSelectRegion.Click += new System.EventHandler(this.BtnSelectRegionClick);
 			// 
 			// toolStripSeparator1
 			// 
@@ -1914,6 +1924,7 @@ namespace Greenshot.Editor.Forms
 		private ToolStripMenuItem upOneLevelToolStripMenuItem;
 		private ToolStripMenuItem arrangeToolStripMenuItem;
 		private ToolStripButton btnCursor;
+		private ToolStripButton btnSelectRegion;
 		private ToolStripEx toolsToolStrip;
 		private ToolStripButton btnArrow;
 		private ToolStripMenuItem drawArrowToolStripMenuItem;

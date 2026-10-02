@@ -459,6 +459,8 @@ namespace Greenshot.Editor.Drawing
                 }
 
                 DeselectAllElements();
+                // The region only exists while the select region tool is used
+                RemoveSelectRegionContainer();
                 CreateUndrawnElement();
             }
         }
@@ -748,7 +750,7 @@ namespace Greenshot.Editor.Drawing
             {
                 long lengtBefore = streamWrite.Length;
                 BinaryFormatter binaryWrite = new BinaryFormatter();
-                binaryWrite.Serialize(streamWrite, _elements);
+                binaryWrite.Serialize(streamWrite, WithoutSelectRegion(_elements));
                 bytesWritten = streamWrite.Length - lengtBefore;
             }
             catch (Exception e)
@@ -876,6 +878,9 @@ namespace Greenshot.Editor.Drawing
                     break;
                 case DrawingModes.Emoji:
                     _undrawnElement = new EmojiContainer(this);
+                    break;
+                case DrawingModes.Select:
+                    _undrawnElement = new SelectRegionContainer(this);
                     break;
             }
 
@@ -1734,6 +1739,25 @@ namespace Greenshot.Editor.Drawing
                 _drawingElement = null;
             }
 
+            // The select region tool has a single region, pressing inside of it moves it, pressing somewhere else replaces it
+            if (GetSelectRegionContainer() is { } selectRegion)
+            {
+                if (DrawingMode == DrawingModes.Select && selectRegion.Bounds.Contains(_mouseStart.X, _mouseStart.Y))
+                {
+                    if (!selectedElements.Contains(selectRegion))
+                    {
+                        DeselectAllElements();
+                        SelectElement(selectRegion);
+                    }
+
+                    _mouseDownElement = selectRegion;
+                    selectRegion.Status = EditStatus.MOVING;
+                    return;
+                }
+
+                RemoveSelectRegionContainer();
+            }
+
             if (_drawingElement == null && DrawingMode != DrawingModes.None)
             {
                 if (_undrawnElement == null)
@@ -1929,12 +1953,19 @@ namespace Greenshot.Editor.Drawing
 
                 _mouseStart = currentMouse;
                 _mouseDownElement.Invalidate();
-                _modified = true;
+                // The region of the select region tool is not part of the image, moving it doesn't modify anything
+                if (_mouseDownElement is not SelectRegionContainer)
+                {
+                    _modified = true;
+                }
             }
             else if (_drawingElement != null)
             {
                 _drawingElement.HandleMouseMove(currentMouse.X, currentMouse.Y);
-                _modified = true;
+                if (_drawingElement is not SelectRegionContainer)
+                {
+                    _modified = true;
+                }
             }
         }
 
@@ -2200,7 +2231,11 @@ namespace Greenshot.Editor.Drawing
                 MakeUndoable(new AddElementMemento(this, element), false);
             }
 
-            _modified = true;
+            // The region of the select region tool is not part of the image
+            if (element is not SelectRegionContainer)
+            {
+                _modified = true;
+            }
         }
 
         /// <summary>
@@ -2274,7 +2309,11 @@ namespace Greenshot.Editor.Drawing
                 MakeUndoable(new DeleteElementMemento(this, elementToRemove), false);
             }
 
-            _modified = true;
+            // The region of the select region tool is not part of the image
+            if (elementToRemove is not SelectRegionContainer)
+            {
+                _modified = true;
+            }
         }
 
         /// <summary>
@@ -2341,7 +2380,13 @@ namespace Greenshot.Editor.Drawing
         public void CutSelectedElements()
         {
             if (!HasSelectedElements) return;
-            DrawableContainerClipboard.Copy(selectedElements);
+            if (IsOnlySelectRegionSelected)
+            {
+                CutSelectedRegion();
+                return;
+            }
+
+            DrawableContainerClipboard.Copy(WithoutSelectRegion(selectedElements));
             RemoveSelectedElements();
         }
 
@@ -2351,7 +2396,157 @@ namespace Greenshot.Editor.Drawing
         public void CopySelectedElements()
         {
             if (!HasSelectedElements) return;
-            DrawableContainerClipboard.Copy(selectedElements);
+            if (IsOnlySelectRegionSelected)
+            {
+                CopySelectedRegion();
+                return;
+            }
+
+            DrawableContainerClipboard.Copy(WithoutSelectRegion(selectedElements));
+        }
+
+        /// <summary>
+        /// The region of the select region tool, null if there is none
+        /// </summary>
+        private SelectRegionContainer GetSelectRegionContainer() => _elements.OfType<SelectRegionContainer>().FirstOrDefault();
+
+        /// <summary>
+        /// Is the region of the select region tool the only selected element?
+        /// Copy and cut then work with the pixels of the region, instead of with the selected elements.
+        /// </summary>
+        private bool IsOnlySelectRegionSelected => selectedElements.Count == 1 && selectedElements[0] is SelectRegionContainer;
+
+        /// <summary>
+        /// The region is just a visual aid for the user, it's not content which can be stored, copied or duplicated.
+        /// </summary>
+        /// <param name="elements">The elements to filter</param>
+        /// <returns>The elements, without the region of the select region tool</returns>
+        private IDrawableContainerList WithoutSelectRegion(IDrawableContainerList elements)
+        {
+            if (!elements.Any(element => element is SelectRegionContainer))
+            {
+                return elements;
+            }
+
+            var filteredElements = new DrawableContainerList(_uniqueId);
+            filteredElements.AddRange(elements.Where(element => element is not SelectRegionContainer));
+            return filteredElements;
+        }
+
+        private void RemoveSelectRegionContainer()
+        {
+            if (GetSelectRegionContainer() is not { } selectRegion) return;
+
+            RemoveElement(selectRegion, false);
+            selectRegion.Dispose();
+        }
+
+        /// <summary>
+        /// The area of the image which is marked with the select region tool.
+        /// This is the region as far as it's inside the image, null if there is no region or it's outside of the image.
+        /// </summary>
+        public NativeRect? SelectedRegion
+        {
+            get
+            {
+                if (GetSelectRegionContainer() is not { } selectRegion || Image == null)
+                {
+                    return null;
+                }
+
+                var region = selectRegion.Bounds.Intersect(new NativeRect(0, 0, Image.Width, Image.Height));
+                return region.Width > 0 && region.Height > 0 ? region : null;
+            }
+        }
+
+        /// <summary>
+        /// Render the specified area of the image as it would be exported, which means including the elements which are on top of it.
+        /// </summary>
+        /// <param name="region">The area to render, must be inside the image</param>
+        /// <returns>A new Bitmap, which needs to be disposed by the caller</returns>
+        public Bitmap GetRegionForExport(NativeRect region)
+        {
+            using Image exportedImage = GetImageForExport();
+            return ImageHelper.CloneArea(exportedImage, region, PixelFormat.DontCare);
+        }
+
+        /// <summary>
+        /// Fill an area of the image with a color, the elements on top of it are not changed.
+        /// The pixels are replaced, so with a transparent color the area becomes transparent. This is undoable.
+        /// </summary>
+        /// <param name="region">The area to fill, the part outside of the image is ignored</param>
+        /// <param name="fillColor">The Color to fill with</param>
+        /// <returns>false if there was nothing to fill</returns>
+        public bool FillRegion(NativeRect region, Color fillColor)
+        {
+            region = region.Normalize().Intersect(new NativeRect(0, 0, Image.Width, Image.Height));
+            if (region.Width <= 0 || region.Height <= 0)
+            {
+                return false;
+            }
+
+            // A transparent color can only be stored in an image with an alpha channel
+            var targetFormat = fillColor.A < 255 && !Image.IsAlphaPixelFormat(Image.PixelFormat) ? PixelFormat.Format32bppArgb : PixelFormat.DontCare;
+            Bitmap filledImage = ImageHelper.Clone(Image, targetFormat);
+            using (Graphics graphics = Graphics.FromImage(filledImage))
+            using (Brush brush = new SolidBrush(fillColor))
+            {
+                // Replace the pixels instead of blending with them
+                graphics.CompositingMode = CompositingMode.SourceCopy;
+                graphics.FillRectangle(brush, region);
+            }
+
+            // Make undoable, this needs to be done before the image is replaced
+            MakeUndoable(new SurfaceBackgroundChangeMemento(this, null), false);
+            // Do not dispose the old image, otherwise we can't undo
+            SetImage(filledImage, false);
+            Invalidate();
+            return true;
+        }
+
+        /// <summary>
+        /// Copy the region of the select region tool to the clipboard, as image
+        /// </summary>
+        /// <returns>true if there was a region which could be copied</returns>
+        public bool CopySelectedRegion()
+        {
+            if (SelectedRegion is not { } region)
+            {
+                return false;
+            }
+
+            try
+            {
+                using Bitmap regionImage = GetRegionForExport(region);
+                using var content = ClipboardHelper.CreateContent(regionImage);
+                if (!content.HasData)
+                {
+                    // Nothing to place with the configured formats, don't clear the clipboard (or cut the region)
+                    return false;
+                }
+                ClipboardHelper.SetClipboardData(content.Contents);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LOG.Error("Couldn't copy the region to the clipboard.", ex);
+                SendMessageEvent(this, SurfaceMessageTyp.Error, ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Copy the region of the select region tool to the clipboard, and replace it in the image with the fill color of the tool
+        /// </summary>
+        /// <returns>true if there was a region which could be cut</returns>
+        public bool CutSelectedRegion()
+        {
+            if (GetSelectRegionContainer() is not { } selectRegion || SelectedRegion is not { } region)
+            {
+                return false;
+            }
+
+            return CopySelectedRegion() && FillRegion(region, selectRegion.GetFieldValueAsColor(FieldType.FILL_COLOR, Color.Transparent));
         }
 
         /// <summary>
@@ -2539,7 +2734,8 @@ namespace Greenshot.Editor.Drawing
 
             if (ClipboardHelper.ContainsImage(clipboard))
             {
-                NativePoint pasteLocation = GetPasteLocation(0.1f, 0.1f);
+                // When a region is marked, the image is pasted there
+                NativePoint pasteLocation = SelectedRegion?.Location ?? GetPasteLocation(0.1f, 0.1f);
 
                 var drawableContainers = ClipboardHelper.GetDrawables(clipboard).Where(drawableContainer => drawableContainer != null).ToList();
                 var imageUrls = drawableContainers.Count == 0 ? ClipboardHelper.GetHtmlImageUrls(clipboard) : Array.Empty<string>();
@@ -2617,8 +2813,11 @@ namespace Greenshot.Editor.Drawing
         /// </summary>
         public void DuplicateSelectedElements()
         {
+            // There is nothing to duplicate when only the region is selected
+            if (IsOnlySelectRegionSelected) return;
+
             LOG.DebugFormat("Duplicating {0} selected elements", selectedElements.Count);
-            IDrawableContainerList dcs = selectedElements.Clone();
+            IDrawableContainerList dcs = WithoutSelectRegion(selectedElements).Clone();
             dcs.Parent = this;
             dcs.MoveBy(10, 10);
             AddElements(dcs);
