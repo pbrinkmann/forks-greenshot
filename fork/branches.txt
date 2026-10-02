@@ -1,0 +1,5 @@
+# Feature branches merged into the "custom" branch, in this order.
+# One branch per line, lines starting with # are ignored.
+# Keep this in sync with the table in FORK.md.
+feature/select-region-tool
+feature/text-autosize
